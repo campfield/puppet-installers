@@ -1,0 +1,6 @@
+.vagrant/*
+.vagrant
+/.vagrant
+archive/
+local/
+singularity/
