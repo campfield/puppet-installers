@@ -6,5 +6,5 @@ Vagrantfile included for bringing up a server and client instance to test things
 
 External Node Classifier not included but link shown.
 
-Will have been by someone else in less lines of code and with more extensive README documentation.
+Will have been implemented by someone else in less lines of code and with more extensive README documentation.
 
