@@ -19,7 +19,7 @@ export WAIT_FOR_CERT=false
 export CERT_AUTOSIGN=false
 
 
-if [[ -z $PROVIDER ]]; then
+if [[ -z ${PROVIDER} ]]; then
   export PROVIDER='openvox'
 fi
 
@@ -49,19 +49,12 @@ else
   export SUDO='sudo -E'
 fi
 
-if [[ $CONTAINER == 'false' ]] && [[ ${EUID} -ne 0 ]]; then
+if [[ ${CONTAINER} == 'false' ]] && [[ ${EUID} -ne 0 ]]; then
   echo "[ERROR] script [$0] must be run as user [root] not [$USER], exiting."
   exit 1
 fi
 
-#cat << _EOF_ > /etc/apt/apt.conf.d/98keepold.conf
-#Dpkg::Options {
-#   '--force-confdef';
-#   '--force-confold';
-#}
-#_EOF_
-
-cat << _EOF_ > /etc/apt/apt.conf.d/98force-confdef-evil.conf
+cat << _EOF_ | $SUDO tee /etc/apt/apt.conf.d/98force-confdef-evil.conf
 Dpkg::Options {
   "--force-confdef";
 }
@@ -126,10 +119,10 @@ while getopts "s:dwae:p:c:" options; do
       ;;
     p)
       export PROVIDER=${OPTARG}
-      if [[ $PROVIDER != 'puppetlabs' ]] && [[ $PROVIDER != 'openvox' ]]; then
-        echo "Provider [$PROVIDER] must be one of [puppetlabs|openvox], received [$PROVIDER], exiting."
+      if [[ ${PROVIDER} != 'puppetlabs' ]] && [[ ${PROVIDER} != 'openvox' ]]; then
+        echo "Provider [${PROVIDER}] must be one of [puppetlabs|openvox], received [${PROVIDER}], exiting."
         exit 1
-      elif [[ $PROVIDER == 'puppetlabs' ]]; then
+      elif [[ ${PROVIDER} == 'puppetlabs' ]]; then
         export RELEASE_DEB_SOURCE="https://apt.puppet.com/${PUPPET_VERSION}-release-${UBUNTU_RELEASE_CODENAME}.deb"
         # dumb switchback to handle variable naming of files and configs.
         PROVIDER='puppet'
@@ -156,14 +149,14 @@ shift $((OPTIND-1))
 #  to not perform correctly.  Mostly seen in Singularity.
 #
 #
-if [[ $CONTAINER == 'true' ]]; then
+if [[ ${CONTAINER} == 'true' ]]; then
   $SUDO apt-get -y install locales locales-all
   $SUDO localedef --no-archive -i en_US -f UTF-8 en_US.UTF-8;
 else
 
 for SERVICE_NAME in apparmor; do
-  $SUDO update-rc.d $SERVICE_NAME disable
-  $SUDO service $SERVICE_NAME stop
+  $SUDO update-rc.d ${SERVICE_NAME} disable
+  $SUDO service ${SERVICE_NAME} stop
 done
 
 if [[ $(which pro 2>/dev/null) ]]; then
@@ -173,7 +166,7 @@ fi
 #
 # Disabling IPv6.
 #
-cat <<- _EOF_ > /etc/sysctl.d/ipv6-disable.conf
+cat <<- _EOF_ | $SUDO tee /etc/sysctl.d/ipv6-disable.conf
 net.ipv6.conf.all.disable_ipv6 = 1
 net.ipv6.conf.default.disable_ipv6 = 1
 _EOF_
@@ -181,7 +174,7 @@ _EOF_
 #
 # Default notifys are miserable.
 #
-cat <<- _EOF_ > /etc/sysctl.d/puppetserver.conf
+cat <<- _EOF_ | $SUDO tee /etc/sysctl.d/puppetserver.conf
 fs.inotify.max_queued_events=1048576
 fs.inotify.max_user_instances=1048576
 fs.inotify.max_user_watches=1048576
@@ -190,7 +183,7 @@ _EOF_
 #
 # Where we are going, we don't need limits.
 #
-cat <<- _EOF_ > /etc/security/limits.d/puppetserver.conf
+cat <<- _EOF_ | $SUDO tee  /etc/security/limits.d/puppetserver.conf
 * soft nofile unlimited
 * hard nofile unlimited
 * soft nproc unlimited
@@ -203,13 +196,13 @@ sysctl -p
 
 fi
 
-if [[ -e $RELEASE_DEB_TARGET ]] && [[ ! -s $RELEASE_DEB_TARGET ]]; then
-  $SUDO /bin/rm $RELEASE_DEB_TARGET
+if [[ -e ${RELEASE_DEB_TARGET} ]] && [[ ! -s ${RELEASE_DEB_TARGET} ]]; then
+  $SUDO /bin/rm ${RELEASE_DEB_TARGET}
 fi
 
-if [[ ! -e $RELEASE_DEB_TARGET ]]; then
-  $SUDO wget -O $RELEASE_DEB_TARGET $RELEASE_DEB_SOURCE
+if [[ ! -e ${RELEASE_DEB_TARGET} ]]; then
+  $SUDO wget -O ${RELEASE_DEB_TARGET} ${RELEASE_DEB_SOURCE}
 fi
 
-$SUDO dpkg -i $RELEASE_DEB_TARGET
+$SUDO dpkg -i ${RELEASE_DEB_TARGET}
 $SUDO apt-get update

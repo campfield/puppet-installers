@@ -7,7 +7,7 @@ source ${SOURCE_DIRECTORY}/boilerplate.sh
 #
 # rp: Run puppet - quicky one-time Puppet agent run.
 #
-$SUDO cat << _EOF_ > /usr/local/sbin/rp
+cat << _EOF_ | $SUDO tee /usr/local/sbin/rp
 #!/bin/bash
 
 #
@@ -15,8 +15,8 @@ $SUDO cat << _EOF_ > /usr/local/sbin/rp
 #
 declare NOOP_FILE='/etc/puppetlabs/puppet/agent-noop.txt'
 
-if [[ -e \$NOOP_FILE ]]; then
-  echo "Program [puppet] blocked by presence of [\$NOOP_FILE], exiting."
+if [[ -e \${NOOP_FILE} ]]; then
+  echo "Program [puppet] blocked by presence of [\${NOOP_FILE}], exiting."
   exit 1
 elif [[ ! -x ${BIN_DIRECTORY}/puppet ]]; then
   echo "Program [puppet] missing/non-executable, exiting."
@@ -30,9 +30,9 @@ fi
 
 ${BIN_DIRECTORY}/puppet agent --enable;
 
-if [[ ! -d "$LOG_DIRECTORY" ]]; then
-  mkdir --mode=0750 "$LOG_DIRECTORY"
-  chown -R puppet:puppet "$LOG_DIRECTORY"
+if [[ ! -d "${LOG_DIRECTORY}" ]]; then
+  mkdir --mode=0750 "${LOG_DIRECTORY}"
+  chown -R puppet:puppet "${LOG_DIRECTORY}"
 fi
 
 ${BIN_DIRECTORY}/puppet agent --test

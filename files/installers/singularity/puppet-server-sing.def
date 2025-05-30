@@ -1,0 +1,48 @@
+Bootstrap: docker
+From: ubuntu:22.04
+
+%files
+
+../puppet /mnt/puppet
+../../local /mnt/local
+
+%post -c /bin/bash
+
+export DEBIAN_FRONTEND=noninteractive
+export PUPPET_ENVIRONMENT='hvsk'
+
+#
+# Always upgrade your container's base packages.
+#
+export CONTAINER_UPGRADE=true
+
+#
+# Local script for redirecting container apt to my
+#  personal 1U server with software repo mirrors.
+#
+/mnt/local/repos-napier.sh
+
+apt-get update
+
+#
+# Containers don't generally have locales in them
+#  and this can cause issues with some installers
+#  and executables.
+#
+apt-get -y install locales locales-all
+localedef --no-archive -i en_US -f UTF-8 en_US.UTF-8
+
+if [[ ${CONTAINER_UPGRADE} ]]; then
+  apt-get -y dist-upgrade
+fi
+
+# Standard Puppet installers.
+cd /mnt/puppet
+/usr/bin/bash /mnt/puppet/puppet-server.sh {{ PUPPET_OPTIONS }}
+/usr/bin/bash /mnt/puppet/scripts-server.sh {{ PUPPET_OPTIONS }}
+/usr/bin/bash /mnt/puppet/scripts-default.sh {{ PUPPET_OPTIONS }}
+
+#
+# No %runscript and not intended to run as a Singularity service instance.
+#
+%runscript

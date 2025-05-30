@@ -9,12 +9,12 @@ echo "Executiong [$0]"
 
 echo ''
 echo 'Puppet mode: [server].'
-echo -e "\tServer: [$PUPPET_SERVER]."
-echo -e "\tDatabase: [$DB_ENABLE]."
-echo -e "\tWait for Cert [$WAIT_FOR_CERT]."
+echo -e "\tServer: [${PUPPET_SERVER}]."
+echo -e "\tDatabase: [${DB_ENABLE}]."
+echo -e "\tWait for Cert [${WAIT_FOR_CERT}]."
 echo -e "\tAutosign [${CERT_AUTOSIGN}]."
-echo -e "\tEnvironment [$ENVIRONMENT]."
-echo -e "\tProvider [$PROVIDER]."
+echo -e "\tEnvironment [${ENVIRONMENT}]."
+echo -e "\tProvider [${PROVIDER}]."
 echo ''
 
 $SUDO apt-get update
@@ -36,10 +36,10 @@ $SUDO apt-get -y install \
   hiera-eyaml \
   reclass
 
-if [[ $PROVIDER == 'puppet' ]]; then
+if [[ ${PROVIDER} == 'puppet' ]]; then
   $SUDO apt-get -y install \
     puppetserver
-elif [[ $PROVIDER == 'openvox' ]]; then
+elif [[ ${PROVIDER} == 'openvox' ]]; then
   $SUDO apt-get -y install \
     ${PROVIDER}-server
 fi
@@ -75,7 +75,7 @@ fi
 # Write Puppet Configuration Files
 #
 #
-$SUDO cat << _EOF_ > /etc/puppetlabs/puppet/puppet.conf
+cat << _EOF_ | $SUDO tee /etc/puppetlabs/puppet/puppet.conf
 
 [main]
   ca_server = ${PUPPET_SERVER}
@@ -112,7 +112,7 @@ $SUDO chown puppet:puppet /etc/puppetlabs/puppet/puppet.conf
 
 if [[ -d ${ENVIRONMENT_DIRECTORY}/${ENVIRONMENT} ]]; then
 
-$SUDO cat << _EOF_ > ${ENVIRONMENT_DIRECTORY}/${ENVIRONMENT}/environment.conf
+cat << _EOF_ | $SUDO tee ${ENVIRONMENT_DIRECTORY}/${ENVIRONMENT}/environment.conf
 
 # Puppet module search path orderings.
 # Manifests: Location of Roles and Profiles
@@ -128,14 +128,14 @@ fi
 
 mkdir -p ${CODE_DIRECTORY}/classifiers/
 
-cat << _EOF_ > ${CODE_DIRECTORY}/classifiers/enc.sh
+cat << _EOF_ | $SUDO tee ${CODE_DIRECTORY}/classifiers/enc.sh
 echo
 _EOF_
 
 
 
 mkdir -p ${CODE_DIRECTORY}/hiera/
-mkdir -p ${ENVIRONMENT_DIRECTORY}/$ENVIRONMENT/
+mkdir -p ${ENVIRONMENT_DIRECTORY}/${ENVIRONMENT}/
 
 $SUDO chmod -R ugo+rx ${CODE_DIRECTORY}/classifiers ${CODE_DIRECTORY}/hiera ${ENVIRONMENT_DIRECTORY}
 $SUDO chown -R puppet:puppet ${CODE_DIRECTORY}/classifiers ${CODE_DIRECTORY}/hiera ${ENVIRONMENT_DIRECTORY}
@@ -146,7 +146,7 @@ $SUDO chown -R puppet:puppet ${CODE_DIRECTORY}/classifiers ${CODE_DIRECTORY}/hie
 #
 #
 
-$SUDO cat << _EOF_ > /etc/puppetlabs/puppetserver/conf.d/ca.conf
+cat << _EOF_ | $SUDO tee /etc/puppetlabs/puppetserver/conf.d/ca.conf
 certificate-authority: {
   # allow CA to sign certificate requests that have subject alternative names.
   allow-subject-alt-names: true
@@ -189,7 +189,7 @@ for DIRECTORY in accounts installers misc pki software; do
 done
 
 
-$SUDO cat << _EOF_ > /etc/puppetlabs/puppet/fileserver.conf
+cat << _EOF_ | $SUDO tee /etc/puppetlabs/puppet/fileserver.conf
 
 #
 # Items specific to users such as authorized_keys, bashrc, and bin/ dirs.
@@ -240,12 +240,12 @@ $SUDO chown puppet:puppet /etc/puppetlabs/puppet/fileserver.conf
 #
 #
 
-$SUDO cat << _EOF_ > /etc/puppetlabs/code/hiera.yaml
+cat << _EOF_ | $SUDO tee /etc/puppetlabs/puppet/hiera.yaml
 ---
 
 version: 5
 defaults:
-  datadir: ${ENVIRONMENT_DIRECTORY}/hiera
+  datadir: ${ENVIRONMENT_DIRECTORY}/${ENVIRONMENT}/hiera
   data_hash: yaml_data
 
 hierarchy:
@@ -267,21 +267,17 @@ hierarchy:
     - "default.yaml"
 
 _EOF_
-$SUDO chmod 644 /etc/puppetlabs/code/hiera.yaml
-$SUDO chown puppet:puppet /etc/puppetlabs/code/hiera.yaml
+$SUDO chmod 644 /etc/puppetlabs/puppet/hiera.yaml
+$SUDO chown puppet:puppet /etc/puppetlabs/puppet/hiera.yaml
 
-if [[ $DB_ENABLE == 'true' ]]; then
-echo KKKKKKK
-
+if [[ ${DB_ENABLE} == 'true' ]]; then
   source ${SOURCE_DIRECTORY}/puppet-db.sh
-echo LLLLLL
-exit
 fi
 
 
 for SERVICE_NAME in puppetserver; do
-  $SUDO systemctl enable $SERVICE_NAME
-  $SUDO systemctl restart $SERVICE_NAME
+  $SUDO service ${SERVICE_NAME} start
+  $SUDO update-rc.d ${SERVICE_NAME} enable
 done
 
 

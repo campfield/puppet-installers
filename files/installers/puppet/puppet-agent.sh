@@ -6,11 +6,11 @@ source ${SOURCE_DIRECTORY}/boilerplate.sh
 
 echo ''
 echo 'Puppet mode: [agent].'
-echo -e "\tServer: [$PUPPET_SERVER]."
-echo -e "\tAutosign [$CERT_AUTOSIGN]."
-echo -e "\tDatabase: [$DB_ENABLE]."
-echo -e "\tEnvironment [$ENVIRONMENT]."
-echo -e "\tWait for Cert [$WAIT_FOR_CERT]."
+echo -e "\tServer: [${PUPPET_SERVER}]."
+echo -e "\tAutosign [${CERT_AUTOSIGN}]."
+echo -e "\tDatabase: [${DB_ENABLE}]."
+echo -e "\tEnvironment [${ENVIRONMENT}]."
+echo -e "\tWait for Cert [${WAIT_FOR_CERT}]."
 echo ''
 
 $SUDO apt-get update
@@ -22,9 +22,10 @@ $SUDO apt-get -y install \
 # Disable the puppet agent at the puppet software level.
 #
 /opt/puppetlabs/puppet/bin/puppet agent --disable;
-$SUDO systemctl disable puppet --now
+$SUDO service puppet stop
+$SUDO update-rc.d puppet disable
 
-$SUDO cat << _EOF_ > /etc/puppetlabs/puppet/puppet.conf
+cat << _EOF_ | $SUDO tee /etc/puppetlabs/puppet/puppet.conf
 [main]
     server = ${PUPPET_SERVER}
     ca_server = ${PUPPET_SERVER}
@@ -44,7 +45,7 @@ $SUDO cat << _EOF_ > /etc/puppetlabs/puppet/puppet.conf
     splay = true
     usecacheonfailure = false
     report = true
-    waitforcert = $WAIT_FOR_CERT
+    waitforcert = ${WAIT_FOR_CERT}
 _EOF_
 
 

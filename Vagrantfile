@@ -33,7 +33,7 @@ REALPATH_DIGEST = Digest::MD5.hexdigest(File.realpath(File.dirname(__FILE__)))[0
 HYPERVISOR_HOSTNAME = Socket.gethostname
 
 PUPPET_SOURCE = ENV['PUPPET_SOURCE'] || 'files/puppet'
-#PUPPET_SOURCE = 'files/puppet'
+PUPPET_INSTALLERS = ENV['PUPPET_INSTALLERS'] || 'files/installers/puppet'
 
 #
 # Upgrade the guest OS on instantiation
@@ -42,7 +42,7 @@ OS_UPGRADE = false
 
 PUPPET_SERVER = 'puppet'
 
-PUPPET_ENVIRONMENT = 'production'
+PUPPET_ENVIRONMENT = 'hvsk'
 
 #
 # Puppet Inc. vs OpenVOX
@@ -62,6 +62,7 @@ VM_BOX = 'generic/ubuntu2204'
 # -w wait for cert
 #
 PUPPET_OPTIONS = "-d -c #{CLASSIFIER} -e #{PUPPET_ENVIRONMENT} -w -a -p #{PROVIDER} -s #{PUPPET_SERVER}"
+PUPPET_OPTIONS = "-c #{CLASSIFIER} -e #{PUPPET_ENVIRONMENT} -w -a -p #{PROVIDER} -s #{PUPPET_SERVER}"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # unique mac addresses
@@ -99,8 +100,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   #
   # Local 1U server with cached repos.
   #
-  if HYPERVISOR_HOSTNAME == 'napier' and File.exist?('files/local/repos-napier.sh')
-    config.vm.provision 'shell', path: 'files/local/repos-napier.sh'
+  if HYPERVISOR_HOSTNAME == 'napier'
+    if File.exist?(File.realpath("#{PUPPET_INSTALLERS}/files/local/repos-napier.sh"))
+      config.vm.provision 'shell', path: "#{PUPPET_INSTALLERS}/files/local/repos-napier.sh"
+    end
   end
 
   #
@@ -135,7 +138,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
     server.vm.provider 'virtualbox' do |vb|
       vb.linked_clone = true
-      vb.name = "server-#{REALPATH_DIGEST}"
+      vb.name = "puppet-server-#{REALPATH_DIGEST}"
 
       if HYPERVISOR_HOSTNAME == 'napier'
         vb.memory = 16384
@@ -146,27 +149,30 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
     end
 
-    #
-    # Look at me inlining scripts without doing proper exist checks.
-    #
-    server.vm.provision 'shell', inline: "sudo /mnt/puppet/files/installers/puppet/puppet-server.sh #{PUPPET_OPTIONS}"
-    server.vm.provision 'shell', inline: "sudo /mnt/puppet/files/installers/puppet/scripts-default.sh #{PUPPET_OPTIONS}"
-    server.vm.provision 'shell', inline: "sudo /mnt/puppet/files/installers/puppet/scripts-server.sh #{PUPPET_OPTIONS}"
+    if File.exist?(File.realpath(PUPPET_INSTALLERS)) and File.directory?(File.realpath(PUPPET_INSTALLERS))
+      server.vm.synced_folder PUPPET_INSTALLERS, '/mnt/puppet'
+      #
+      # Look at me inlining scripts without doing proper exist checks.
+      #
+      server.vm.provision 'shell', inline: "sudo /mnt/puppet/files/installers/puppet/puppet-server.sh #{PUPPET_OPTIONS}"
+      server.vm.provision 'shell', inline: "sudo /mnt/puppet/files/installers/puppet/scripts-default.sh #{PUPPET_OPTIONS}"
+      server.vm.provision 'shell', inline: "sudo /mnt/puppet/files/installers/puppet/scripts-server.sh #{PUPPET_OPTIONS}"
+    end
   end
 
 
   #
   # slient verse, nearly same as the first.
   #
-  config.vm.define 'client', primary: false, autostart: false do |agent|
-    agent.vm.hostname = 'client'
-    agent.hostmanager.aliases = 'client'
+  config.vm.define 'puppet-client', primary: false, autostart: false do |agent|
+    agent.vm.hostname = 'puppet-client'
+    agent.hostmanager.aliases = 'puppet-client'
 
     agent.vm.network :private_network, ip: "#{NETWORK_PREFIX}.152", virtualbox__intnet: true
 
     agent.vm.provider 'virtualbox' do |vb|
       vb.linked_clone = true
-      vb.name = "client-#{REALPATH_DIGEST}"
+      vb.name = "puppet-client-#{REALPATH_DIGEST}"
 
       if HYPERVISOR_HOSTNAME == 'napier'
         vb.memory = 8096
@@ -182,13 +188,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   end
 
-# https://github.com/apptainer/apptainer/releases/download/v1.4.1/apptainer_1.4.1_amd64.deb"
-
   #
   # slient verse, nearly same as the first.
   #
   config.vm.define 'singularity', primary: false, autostart: false do |singularity|
-    singularity.vm.hostname = 'singularity'
+    singularity.vm.hostname = 'puppet'
     singularity.hostmanager.aliases = 'singularity'
 
     singularity.vm.synced_folder "/var/tmp", '/mnt/singularity'
@@ -198,17 +202,23 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       vb.name = "singularity-#{REALPATH_DIGEST}"
 
       if HYPERVISOR_HOSTNAME == 'napier'
-        vb.memory = 8096
-        vb.cpus = 4
+        vb.memory = 16384
+        vb.cpus = 8
       else
         vb.memory = 2048
         vb.cpus = 2
       end
     end
 
-    singularity.vm.provision 'shell', inline: "sudo /mnt/puppet/files/installers/singularity/apptainer-install-ppa.sh"
-#    singularity.vm.provision 'shell', inline: "sudo /mnt/puppet/files/installers/singularity/puppet-server-simg.sh #{PUPPET_OPTIONS}"
+    # In theory these should all be there.  In theory.
+    if File.exist?(PUPPET_SOURCE) and File.directory?(File.realpath(PUPPET_SOURCE))
+      singularity.vm.synced_folder PUPPET_SOURCE, "/etc/puppetlabs/code/environments/#{PUPPET_ENVIRONMENT}"
+      singularity.vm.synced_folder "#{PUPPET_SOURCE}/classifiers", '/etc/puppetlabs/code/classifiers'
+      singularity.vm.synced_folder "#{PUPPET_SOURCE}/hiera", '/etc/puppetlabs/code/hiera'
+    end
 
+    singularity.vm.provision 'shell', inline: "sudo /mnt/puppet/files/installers/singularity/apptainer-install-ppa.sh"
+    singularity.vm.provision 'shell', inline: "sudo /mnt/puppet/files/installers/singularity/puppet-server-simg.sh #{PUPPET_OPTIONS}"
 
   end
 
