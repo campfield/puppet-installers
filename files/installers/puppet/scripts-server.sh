@@ -42,13 +42,13 @@ if [[ \${ACTION} == 'restart' ]]; then
   for SERVICE_NAME in ${PUPPET_STOP_LIST}; do
     echo "Stopping [\$SERVICE_NAME]."
     $SUDO service \${SERVICE_NAME} stop
-    $SUDO update-rc.d \${SERVICE_NAME} disable
+    # $SUDO update-rc.d \${SERVICE_NAME} disable
   done
 
   for SERVICE_NAME in ${PUPPET_START_LIST}; do
     echo "Starting [\$SERVICE_NAME]."
     $SUDO service \${SERVICE_NAME} start
-    $SUDO update-rc.d \${SERVICE_NAME} enable
+    # $SUDO update-rc.d \${SERVICE_NAME} enable
   done
 
 elif [[ \${ACTION} == 'stop' ]]; then
@@ -56,14 +56,14 @@ elif [[ \${ACTION} == 'stop' ]]; then
   for SERVICE_NAME in ${PUPPET_STOP_LIST}; do
     echo "Stopping [\$SERVICE_NAME]."
     $SUDO service \${SERVICE_NAME} stop
-    $SUDO update-rc.d \${SERVICE_NAME} disable
+    # $SUDO update-rc.d \${SERVICE_NAME} disable
   done
 
 elif [[ \${ACTION} == 'start' ]]; then
   for SERVICE_NAME in ${PUPPET_START_LIST}; do
     echo "Starting [\$SERVICE_NAME]."
     $SUDO service \${SERVICE_NAME} start
-    $SUDO update-rc.d \${SERVICE_NAME} enable
+    # $SUDO update-rc.d \${SERVICE_NAME} enable
   done
 fi
 

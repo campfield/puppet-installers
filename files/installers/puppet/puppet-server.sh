@@ -51,7 +51,7 @@ export PUPPETFILESERVER_DIRECTORY='/var/puppetlabs/puppetserver/fileserver'
 export EYAML_PATH="${BIN_DIRECTORY}/eyaml"
 export PUPPETSERVER_PATH="${BIN_DIRECTORY}/puppetserver"
 export PUPPETDB_DATA_DIRECTORY=/opt/puppetlabs/server/data/puppetdb/
-export GEM_LIST='ipaddress'
+export GEM_LIST='ipaddress librarian-puppet'
 export PATH=$BIN_DIRECTORY:$PATH
 
 
@@ -115,8 +115,11 @@ if [[ -d ${ENVIRONMENT_DIRECTORY}/${ENVIRONMENT} ]]; then
 cat << _EOF_ | $SUDO tee ${ENVIRONMENT_DIRECTORY}/${ENVIRONMENT}/environment.conf
 
 # Puppet module search path orderings.
-# Manifests: Location of Roles and Profiles
-# Custom: Developed in-house.
+
+# manifests/projects: roles and profiles for specific projects (e.g., nfsroot, ai-research, home-automation)
+# modules/projects: modules unique to a project or upstream modules specifically modified for that project.
+# modules/custom: modules that are internally written for a specific organization/multiple projects.
+# modules/localized: upstream modules modified for a specific organization.
 # Localized: Modified another developer's module.
 # Upstream: Module developed by an external party.
 
